@@ -3,6 +3,7 @@ import json
 from discord.ext import commands
 from discord import option
 from discord import Option
+from discord.ext.commands.errors import CheckFailure
 import requests
 import base64
 from io import BytesIO
@@ -12,6 +13,26 @@ models_LUT = {
         "aom3a2": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3A2_orangemixs", "orangemix.vae.pt"),
         "deliberate": ("more_models_allround_Deliberate_deliberate_v2", "vae-ft-mse-840000-ema-pruned.safetensors")
 }
+
+allowed_guilds = None
+def check_if_allowed_guilds(ctx):
+    return ctx.guild and ctx.guild.id in allowed_guilds
+
+class ArgParseException(Exception):
+    pass
+
+class NonExitingArgumentParser(ArgumentParser):
+    def error(self, message):
+        """error(message: string)
+
+        Prints a usage message incorporating the message to stderr and
+        exits.
+
+        If you override this in a subclass, it should not return -- it
+        should either exit or raise an exception.
+        """
+        args = {'prog': self.prog, 'message': message}
+        raise ArgParseException('%(prog)s: error: %(message)s\n' % args)
 
 class Txt2Img:
     def __init__(self, prompt = "Dingle dot the test bot", negative_prompt = "", steps = 20, sampler="DPM++ SDE Karras", filter_nsfw = True, batch_size=1, model=None, vae=None):
@@ -44,7 +65,7 @@ def parse_txt2img_respones(data):
     d = json.loads(data)
     return Txt2ImgResponse(d['images'], d['parameters'], d['info'])
 
-pics_args_parse = ArgumentParser(prog="!render", description="dingledong", add_help=False, exit_on_error=False)
+pics_args_parse = NonExitingArgumentParser(prog="!render", description="dingledong", add_help=False, exit_on_error=False)
 pics_args_parse.add_argument("--nsfw", help="Allow nsfw content", default=False, action='store_true')
 pics_args_parse.add_argument("-n", help="Number of pictures", default=1, type=int)
 pics_args_parse.add_argument("-m", "--model", dest="data_model", help=f"Stable diffusion model. Available models: {', '.join(models_LUT.keys())}", default=None, type=str)
@@ -57,6 +78,7 @@ class Pics(commands.Cog):
         self.bot = bot
 
     @commands.command(usage=pics_args_parse.format_help())
+    @commands.check(check_if_allowed_guilds)
     async def render(self, ctx, *msg):
         member = ctx.author
 
@@ -99,5 +121,17 @@ class Pics(commands.Cog):
 
         await ctx.send(f"Here you go, {member}", files=files)
 
+    @render.error
+    async def render_error(self, ctx, error):
+        if type(error) is CheckFailure:
+            return
+
+        if type(error.original) is ArgParseException:
+            await ctx.send(str(error.original))
+        else:
+            await ctx.send(f"Well that didn't work... {type(error)}")
+
 def setup(bot):
+    global allowed_guilds
+    allowed_guilds = [int(x) for x in bot.allowed_guilds]
     bot.add_cog(Pics(bot))
