@@ -109,6 +109,36 @@ class Pics(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
+        self.history = {}
+
+    def _make_message_key(self, ctx):
+        g = None
+        if ctx.guild is not None:
+            g = ctx.guild.id
+
+        c = None
+        if type(ctx.message.channel) is not discord.DMChannel:
+            c = ctx.message.channel
+    
+        u = ctx.message.author
+
+        return (g, c, u)
+
+    @commands.command()
+    @commands.check(check_if_allowed_guilds)
+    @commands.check(check_if_allowed_channels)
+    async def again(self, ctx):
+        member = ctx.author
+
+        key = self._make_message_key(ctx)
+
+        msg = self.history.get(key)
+        if msg is None:
+            await ctx.send(f"Oi, {member}. No previous command.")
+            return
+
+        await self.render(ctx, *msg)
+     
 
     @commands.command(usage=pics_args_parse.format_help())
     @commands.check(check_if_allowed_guilds)
@@ -169,6 +199,9 @@ class Pics(commands.Cog):
 
         if len(files):
             await ctx.send(f"Here you go, {member}", files=files)
+
+        key = self._make_message_key(ctx)
+        self.history[key] = msg
 
     @render.error
     async def render_error(self, ctx, error):
