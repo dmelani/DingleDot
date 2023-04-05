@@ -9,6 +9,7 @@ import requests
 import base64
 from io import BytesIO
 from argparse import ArgumentParser, ArgumentError
+import aiohttp
 
 models_LUT = {
         "aom3a2": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3A2_orangemixs", "orangemix.vae.pt"),
@@ -174,9 +175,12 @@ class Pics(commands.Cog):
         await ctx.send(f"Ok, {member}. Rendering {prompt}")
 
         t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height)
-        r_data = requests.post('http://192.168.1.43:7860/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'})
+        async with aiohttp.ClientSession() as session:
+            async with session.post('http://192.168.1.43:7860/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
+                r_data = await response.text()
+
         #turn this into async
-        resp = parse_txt2img_respones(r_data.text)
+        resp = parse_txt2img_respones(r_data)
         files = []
         try:
             for x in resp.images:
