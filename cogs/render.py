@@ -14,6 +14,7 @@ import aiohttp
 models_LUT = {
         "aom3a2": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3A2_orangemixs", "orangemix.vae.pt"),
         "aom3a1b": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3A1B_orangemixs", "orangemix.vae.pt"),
+        "darksushi": ("more_models_anime_DarkSushiMix_darkSushiMixMix_brighterPruned", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "deliberate": ("more_models_allround_Deliberate_deliberate_v2", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "chilloutmix": ("more_models_allround_ChilloutMix_chilloutmix_NiPrunedFp32Fix", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "rpg": ("more_models_allround_RPG_rpg_V4", "vae-ft-mse-840000-ema-pruned.safetensors"),
@@ -22,6 +23,15 @@ models_LUT = {
         "anythingv5": ("more_models_anime_Anything V5_AnythingV3V5_v5PrtRE", "kl-f8-anime2.ckpt"),
         "illuminati": ("more_models_allround_Illuminati Diffusion v1.1_illuminatiDiffusionV1_v11", "vae-ft-mse-840000-ema-pruned.safetensors")
 }
+
+sampler_LUT = {
+        "euler_a": ("Euler a", 20),
+        "ddim": ("DDIM", 50),
+        "dpmpp_sde_ka": ("DPM++ SDE Karras", 31),
+        "dpmpp_2m_ka": ("DPM++ 2M Karras", 31),
+        "dpmpp_2s_a_ka": ("DPM++ 2S a Karras", 31),
+        "heun": ("Heun", 50)
+        }
 
 allowed_guilds = None
 disallowed_channels = ["general", "allmänt"]
@@ -62,10 +72,10 @@ class NonExitingArgumentParser(ArgumentParser):
         raise ArgParseException('%(prog)s: error: %(message)s\n' % args)
 
 class Txt2Img:
-    def __init__(self, prompt = "Dingle dot the test bot", negative_prompt = "", steps = 28, sampler="DPM++ SDE Karras", filter_nsfw = True, batch_size=1, model=None, vae=None, width=512, height=512, clip_stop=1, restore_faces=False, cfg_scale=7):
+    def __init__(self, prompt = "Dingle dot the test bot", negative_prompt = "", sampler_name="DPM++ SDE Karras", steps=30, filter_nsfw = True, batch_size=1, model=None, vae=None, width=512, height=512, clip_stop=1, restore_faces=False, cfg_scale=7):
         self.prompt = prompt
         self.negative_prompt = negative_prompt
-        self.sampler_index = sampler
+        self.sampler_name = sampler_name
         self.steps = steps
         self.n_iter = batch_size
         self.width = width
@@ -102,6 +112,7 @@ pics_args_parse.add_argument("--nsfw", help="Allow nsfw content", default=False,
 pics_args_parse.add_argument("-n", help="Number of pictures", default=1, type=int)
 pics_args_parse.add_argument("--cfgs", help="Classifier Free Guidance Scale - how strongly the image should conform to prompt - lower values produce more creative results. Default is 7.", default=7, type=int)
 pics_args_parse.add_argument("-m", "--model", dest="data_model", help=f"Stable diffusion model", choices=models_LUT.keys(), default="deliberate", type=str)
+pics_args_parse.add_argument("-s", "--sampler", dest="sampler_name", help=f"Stable diffusion sampler", choices=sampler_LUT.keys(), default="dpmpp_sde_ka", type=str)
 pics_args_parse.add_argument("-l", "--layout", dest="layout", default="square", choices=["square", "portrait", "landscape"])
 pics_args_parse.add_argument("--clip_stop", dest="clip_stop", help="Sets where to stop the CLIP language model. Default is 1. It works kinda like this in layers person -> male, female -> man, boy, woman girl -> and so on", default=1, choices=range(1, 5), type=int)
 pics_args_parse.add_argument("prompt", type=str)
@@ -190,6 +201,7 @@ class Pics(commands.Cog):
         clip_stop = args.clip_stop
         restore_faces = args.restore_faces
         cfgs = args.cfgs
+        sampler = args.sampler_name
 
         if filter_nsfw and "nsfw" not in neg_prompt:
             neg_prompt = "(nsfw:1.1), " + neg_prompt
@@ -203,9 +215,14 @@ class Pics(commands.Cog):
         if data_model:
             model, vae = models_LUT[data_model]
         
+        sampler_name = None
+        steps = None
+        if sampler:
+            sampler_name, steps = sampler_LUT[sampler]
+        
         await ctx.send(f"Ok, {member}. Rendering {prompt}")
 
-        t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs)
+        t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs, sampler_name=sampler_name, steps=steps)
         async with aiohttp.ClientSession() as session:
             async with session.post('http://192.168.1.43:7860/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
                 r_data = await response.text()
