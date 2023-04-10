@@ -35,6 +35,7 @@ sampler_LUT = {
 
 dimensions_LUT = {
         "square": (512, 512),
+        "lsquare": (768, 768),
         "landscape": (768, 512),
         "portrait": (512, 768)
         }
@@ -131,7 +132,7 @@ pics_args_parse.add_argument("--cfgs", help="Classifier Free Guidance Scale - ho
 pics_args_parse.add_argument("-m", "--model", dest="data_model", help=f"Stable diffusion model", choices=models_LUT.keys(), default="deliberate", type=str)
 pics_args_parse.add_argument("-s", "--sampler", dest="sampler_name", help=f"Stable diffusion sampler", choices=sampler_LUT.keys(), default="dpmpp_sde_ka", type=str)
 pics_args_parse.add_argument("-i", dest="sampler_steps", help="Number of sampler steps", default=None, type=int)
-pics_args_parse.add_argument("-l", "--layout", dest="layout", default="square", choices=["square", "portrait", "landscape"])
+pics_args_parse.add_argument("-l", "--layout", dest="layout", default="square", choices=["square", "lsquare", "portrait", "landscape"])
 pics_args_parse.add_argument("--clip_stop", dest="clip_stop", help="Sets where to stop the CLIP language model. Default is 1. It works kinda like this in layers person -> male, female -> man, boy, woman girl -> and so on", default=1, choices=range(1, 5), type=int)
 pics_args_parse.add_argument("prompt", type=str)
 pics_args_parse.add_argument("neg_prompt", metavar="negative prompt", type=str, nargs='?', default="(bad quality, worst quality:1.4), child, kid, toddler")
@@ -249,8 +250,9 @@ class Pics(commands.Cog):
             async with session.post('http://192.168.1.43:7860/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
                 r_data = await response.text()
 
-        #turn this into async
         resp = parse_txt2img_respones(r_data)
+#        print("DEBUG:", resp.info, resp.parameters)
+
         files = []
         try:
             for x in resp.images:
