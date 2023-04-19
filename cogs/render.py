@@ -203,12 +203,12 @@ class Pics(commands.Cog):
         if v is None:
             return
 
-        msg, answer = v
+        msg, answer, _ = v
         if answer is None:
             return
 
         await answer.delete()
-        self.history[key] = (msg, None)
+        self.history[key] = (msg, None, None)
 
     @commands.command()
     @commands.check(check_if_allowed_guilds)
@@ -218,12 +218,29 @@ class Pics(commands.Cog):
 
         key = self._make_message_key(ctx)
 
-        msg, _ = self.history.get(key)
+        msg, _, _ = self.history.get(key)
         if msg is None:
             await ctx.send(f"Oi, {member}. No previous command.")
             return
 
         await self.render(ctx, *msg)
+
+    @commands.command()
+    @commands.check(check_if_allowed_guilds)
+    @commands.check(check_if_allowed_channels)
+    async def lastprompt(self, ctx):
+        member = ctx.author
+
+        key = self._make_message_key(ctx)
+
+        tmp = self.history.get(key)
+        if tmp is None:
+            await ctx.send("Oi, {}. No earlier prompt.".format(member))
+            return
+
+        _, _, resp = tmp
+        info = json.loads(resp.info)
+        await ctx.send("Oi, {}. The last prompt was: {}\nNegative: {}".format(member, info['prompt'], info['negative_prompt']))
      
     @commands.command()
     @commands.check(check_if_allowed_guilds)
@@ -334,7 +351,7 @@ class Pics(commands.Cog):
             answer = await ctx.send(f"Here you go, {member}. Seeds: {', '.join(used_seeds)}", files=files)
 
         key = self._make_message_key(ctx)
-        self.history[key] = (msg, answer)
+        self.history[key] = (msg, answer, resp)
 
     @render.error
     async def render_error(self, ctx, error):
