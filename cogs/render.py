@@ -9,6 +9,8 @@ import requests
 import base64
 from io import BytesIO
 from argparse import ArgumentParser, ArgumentError
+import argunparse
+
 import aiohttp
 
 models_LUT = {
@@ -173,6 +175,9 @@ pics_args_parse.add_argument("--restore_faces", help="Attempts to restore faces"
 pics_args_parse.add_argument("-U", "--upscale", dest="upscaler", help=f"Upscale by 2x", default=None, choices=upscalers_LUT.keys())
 pics_args_parse.add_argument("--seed", help="seed", default=None, type=int)
 
+again_args_parse = NonExitingArgumentParser(prog="!again", add_help=False, exit_on_error=False)
+again_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default=None, type=str)
+
 class Pics(commands.Cog):
     
     def __init__(self, bot):
@@ -210,20 +215,55 @@ class Pics(commands.Cog):
         await answer.delete()
         self.history[key] = (msg, None, None)
 
-    @commands.command()
+    @commands.command(usage=again_args_parse.format_help())
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
-    async def again(self, ctx):
+    async def again(self, ctx, *msg):
         member = ctx.author
 
         key = self._make_message_key(ctx)
 
-        msg, _, _ = self.history.get(key)
-        if msg is None:
+        old_msg, _, _ = self.history.get(key)
+        if old_msg is None:
             await ctx.send(f"Oi, {member}. No previous command.")
             return
 
-        await self.render(ctx, *msg)
+        try:
+            new_args = again_args_parse.parse_args(msg)
+        except ArgumentError as e:
+            await ctx.send(f"Oi, {member}. Bad command: {e}")
+            return
+
+        if new_args.data_model is not None:
+            old_args = pics_args_parse.parse_args(old_msg)
+            prompt = old_args.prompt
+            neg_prompt = old_args.neg_prompt
+            sampler_name = old_args.sampler_name
+            sampler_steps = old_args.sampler_steps
+            upscaler = old_args.upscaler
+
+            kwargs = vars(old_args)
+            kwargs.pop("data_model")
+            kwargs.pop("prompt")
+            kwargs.pop("neg_prompt")
+            kwargs.pop("sampler_name")
+            kwargs.pop("sampler_steps")
+            kwargs.pop("upscaler")
+
+            kwargs['model'] = new_args.data_model
+            kwargs['sampler'] = sampler_name
+            kwargs['i'] = sampler_steps
+            kwargs['upscale'] = upscaler
+
+            unparser = argunparse.ArgumentUnparser(opt_value=' ') 
+            unp = unparser.unparse_options(kwargs, to_list=True)
+            unp += [prompt]
+            unp += [neg_prompt]
+
+            await self.render(ctx, *unp)
+            return
+
+        await self.render(ctx, *old_msg)
 
     @commands.command()
     @commands.check(check_if_allowed_guilds)
@@ -335,7 +375,6 @@ class Pics(commands.Cog):
                 files.append(f)
                 curr_seed = int(info['all_seeds'][i])
                 used_seeds.append(curr_seed)
-                #print("ASDF", used_seeds)
 
         except Exception as e:
             await ctx.send(f"Failed to generate pic, {member}")
