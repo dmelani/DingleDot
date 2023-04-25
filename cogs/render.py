@@ -165,7 +165,7 @@ pics_args_parse = NonExitingArgumentParser(prog="!render", description="dingledo
 pics_args_parse.add_argument("--nsfw", help="Allow nsfw content", default=False, action='store_true')
 pics_args_parse.add_argument("-n", help="Number of pictures", default=1, type=int)
 pics_args_parse.add_argument("--cfgs", help="Classifier Free Guidance Scale - how strongly the image should conform to prompt - lower values produce more creative results. Default is 7.", default=7, type=int)
-pics_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default="deliberate", type=str)
+pics_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default=[], type=str, action='append')
 pics_args_parse.add_argument("-s", "--sampler", dest="sampler_name", help=f"Stable diffusion sampler", choices=sampler_LUT.keys(), default="dpmpp_sde_ka", type=str)
 pics_args_parse.add_argument("-i", dest="sampler_steps", help="Number of sampler steps", default=None, type=int)
 pics_args_parse.add_argument("-l", "--layout", dest="layout", default="square", choices=["square", "lsquare", "portrait", "lportrait", "landscape", "llandscape"])
@@ -312,7 +312,7 @@ class Pics(commands.Cog):
         neg_prompt = args.neg_prompt
         batch_size = args.n
         filter_nsfw = False if args.nsfw is True else True
-        data_model = args.data_model
+        data_models = args.data_model
         width, height = dimensions_LUT[args.layout]
         clip_stop = args.clip_stop
         restore_faces = args.restore_faces
@@ -322,22 +322,21 @@ class Pics(commands.Cog):
         sampler_steps = args.sampler_steps
         seed = args.seed
 
+        if len(data_models) == 0:
+            data_models = ["deliberate"]
+
         if filter_nsfw and "nsfw" not in neg_prompt:
             neg_prompt = "(nsfw:1.1), " + neg_prompt
 
-        if data_model is not None and data_model not in models_LUT:
-            await ctx.send(f"Oi, {member}. No such model.")
-            return
+        for dm in data_models:
+            if dm not in models_LUT:
+                await ctx.send(f"Oi, {member}. No such model:", dm)
+                return
 
         # This is probable a good idea
         neg_prompt = "(child), (kid), (toddler), " + neg_prompt
 #        print("DEBUG: final neg prompt", neg_prompt)
 
-        model = None
-        vae = None
-        if data_model:
-            model, vae = models_LUT[data_model]
-        
         sampler_name = None
         steps = None
         if sampler:
@@ -352,37 +351,39 @@ class Pics(commands.Cog):
         
         await ctx.send(f"Ok, {member}. GPU goes brrrr!")
 
-        t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs, sampler_name=sampler_name, steps=steps, upscaler=upscaler_name, seed=seed)
-        async with aiohttp.ClientSession() as session:
-            async with session.post('http://192.168.1.43:7860/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
-                r_data = await response.text()
-
-        resp = parse_txt2img_respones(r_data)
-        #print("DEBUG:", resp.info)#, resp.parameters)
-        info = json.loads(resp.info)
-
         files = []
         used_seeds = []
-        try:
-            for i, x in enumerate(resp.images):
-                pic = base64.b64decode(x)
+        for dm in data_models:
+            model, vae = models_LUT[dm]
+            t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs, sampler_name=sampler_name, steps=steps, upscaler=upscaler_name, seed=seed)
+            async with aiohttp.ClientSession() as session:
+                async with session.post('http://192.168.1.43:7860/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
+                    r_data = await response.text()
 
-                img = Image.open(BytesIO(pic))
-                if not img.getbbox():
-                    # All black image
-                    continue
+            resp = parse_txt2img_respones(r_data)
+            #print("DEBUG:", resp.info)#, resp.parameters)
+            info = json.loads(resp.info)
 
-                f = discord.File(BytesIO(pic), filename="pic.png")
-                files.append(f)
-                curr_seed = int(info['all_seeds'][i])
-                used_seeds.append(curr_seed)
+            try:
+                for i, x in enumerate(resp.images):
+                    pic = base64.b64decode(x)
 
-        except Exception as e:
-            await ctx.send(f"Failed to generate pic, {member}")
-            return
+                    img = Image.open(BytesIO(pic))
+                    if not img.getbbox():
+                        # All black image
+                        continue
+
+                    f = discord.File(BytesIO(pic), filename="pic.png")
+                    files.append(f)
+                    curr_seed = int(info['all_seeds'][i])
+                    used_seeds.append(curr_seed)
+
+            except Exception as e:
+                await ctx.send(f"Failed to generate pic, {member}")
+                return
 
         used_seeds = [str(x) for x in used_seeds]
-        diff_len = batch_size - len(files)
+        diff_len = (batch_size * len(data_models)) - len(files)
         if diff_len > 0:
             await ctx.send(f"Some pics were too spicy for me")
 
