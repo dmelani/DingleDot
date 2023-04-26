@@ -24,6 +24,7 @@ models_LUT = {
         "chilloutmix": ("more_models_allround_ChilloutMix_chilloutmix_NiPrunedFp32Fix", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "counterfeit": ("more_models_anime_Counterfeit-V2.5_Counterfeit-V2.5", "Counterfeit-V2.5.vae.pt"),
         "darksushi": ("more_models_anime_DarkSushiMix_darkSushiMixMix_brighterPruned", "vae-ft-mse-840000-ema-pruned.safetensors"),
+        "darksushi25d": ("more_models_anime_darksushi2.5d_darkSushi25D25D_v20", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "deliberate": ("more_models_allround_Deliberate_deliberate_v2", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "hassanblend": ("more_models_allround_HassanBlend 1.5.1.2_hassanblend1512And_hassanblend1512", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "hassanblendfantasy": ("more_models_allround_HassanBlend-Fantasy_HB-Fantasy1.5", "vae-ft-mse-840000-ema-pruned.safetensors"),
@@ -38,6 +39,7 @@ models_LUT = {
         "rev_animated": ("more_models_allround_ReV Animated_revAnimated_v122", "kl-f8-anime2.ckpt"),
         "rev": ("more_models_allround_Realistic Vision_realisticVisionV20_v20", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "rpg": ("more_models_allround_RPG_rpg_V4", "vae-ft-mse-840000-ema-pruned.safetensors"),
+        "simplybeautiful": ("more_models_anime_SimplyBeautiful_simplyBeautiful_v10", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "test5": ("more_models_nsfw_Uber_Realistic_Porn_Merge_(URPM)_uberRealisticPornMerge_urpmv13", "vae-ft-mse-840000-ema-pruned.safetensor"),
         "test10": ("more_models_test10", "kl-f8-anime2.ckpt"),
         "test11": ("more_models_test11", "kl-f8-anime2.ckpt"),
@@ -116,6 +118,22 @@ class NonExitingArgumentParser(ArgumentParser):
         args = {'prog': self.prog, 'message': message}
         raise ArgParseException('%(prog)s: error: %(message)s\n' % args)
 
+class Interrogate:
+    def __init__(self, image, model):
+        self.image = image
+        self.model = model 
+        
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__)
+
+class InterrogateResponse:
+    def __init__(self, data):
+        message = json.loads(data)
+        self.message = message["caption"]
+
+def parse_interrogate_respones(data):
+    return InterrogateResponse(data)
+
 class Txt2Img:
     def __init__(self, prompt = "Dingle dot the test bot", negative_prompt = "", sampler_name="DPM++ SDE Karras", steps=30, filter_nsfw = True, batch_size=1, model=None, vae=None, width=512, height=512, clip_stop=1, restore_faces=False, cfg_scale=7, upscaler=None, seed=None):
         self.prompt = prompt
@@ -179,6 +197,10 @@ pics_args_parse.add_argument("--seed", help="seed", default=None, type=int)
 again_args_parse = NonExitingArgumentParser(prog="!again", add_help=False, exit_on_error=False)
 again_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default=None, type=str)
 
+explain_args_parse = NonExitingArgumentParser(prog="!explain", add_help=False, exit_on_error=False)
+explain_args_parse.add_argument("last_pic", type=int, default=0)
+explain_args_parse.add_argument("-m", dest="model", default="clip", choices=["clip", "deepdanbooru"])
+
 class Pics(commands.Cog):
     
     def __init__(self, bot):
@@ -209,12 +231,41 @@ class Pics(commands.Cog):
         if v is None:
             return
 
-        msg, answer, _ = v
+        msg, answer, _, _= v
         if answer is None:
             return
 
         await answer.delete()
-        self.history[key] = (msg, None, None)
+        self.history.pop(key)
+
+    @commands.command(usage=explain_args_parse.format_help())
+    @commands.check(check_if_allowed_guilds)
+    @commands.check(check_if_allowed_channels)
+    async def explain(self, ctx, *msg):
+        member = ctx.author
+        args = explain_args_parse.parse_args(msg)
+        pic_no = args.last_pic
+        model = args.model
+        key = self._make_message_key(ctx)
+
+        old, _, images, _ = self.history.get(key)
+        if old is None:
+            await ctx.send(f"Oi, {member}. No previous command.")
+            return
+
+        if pic_no > len(images):
+            await ctx.send(f"Oi, {member}. No such picture.")
+            return
+
+        img = images[pic_no]
+        t = Interrogate(img, model)
+        async with aiohttp.ClientSession() as session:
+            async with session.post('http://192.168.1.43:7860/sdapi/v1/interrogate', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
+                r_data = await response.text()
+
+        resp = parse_interrogate_respones(r_data)
+
+        await ctx.send(f"Oi, {member}. Explanation was: {resp.message}")
 
     @commands.command(usage=again_args_parse.format_help())
     @commands.check(check_if_allowed_guilds)
@@ -224,7 +275,12 @@ class Pics(commands.Cog):
 
         key = self._make_message_key(ctx)
 
-        old_msg, _, _ = self.history.get(key)
+        v = self.history.get(key)
+        if v is None:
+            await ctx.send(f"Oi, {member}. No previous command.")
+            return
+
+        old_msg, _, _, _ = v
         if old_msg is None:
             await ctx.send(f"Oi, {member}. No previous command.")
             return
@@ -279,9 +335,8 @@ class Pics(commands.Cog):
             await ctx.send("Oi, {}. No earlier prompt.".format(member))
             return
 
-        _, _, resp = tmp
-        info = json.loads(resp.info)
-        await ctx.send("Oi, {}. The last prompt was: {}\nNegative: {}".format(member, info['prompt'], info['negative_prompt']))
+        _, _, _, prompts = tmp
+        await ctx.send("Oi, {}. The last prompt was: {}\nNegative: {}".format(member, prompts[0], prompts[1]))
      
     @commands.command()
     @commands.check(check_if_allowed_guilds)
@@ -353,6 +408,7 @@ class Pics(commands.Cog):
 
         files = []
         used_seeds = []
+        images = []
         for dm in data_models:
             model, vae = models_LUT[dm]
             t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs, sampler_name=sampler_name, steps=steps, upscaler=upscaler_name, seed=seed)
@@ -373,6 +429,7 @@ class Pics(commands.Cog):
                         # All black image
                         continue
 
+                    images.append(x)
                     f = discord.File(BytesIO(pic), filename="pic.png")
                     files.append(f)
                     curr_seed = int(info['all_seeds'][i])
@@ -392,7 +449,7 @@ class Pics(commands.Cog):
             answer = await ctx.send(f"Here you go, {member}. Seeds: {', '.join(used_seeds)}", files=files)
 
         key = self._make_message_key(ctx)
-        self.history[key] = (msg, answer, resp)
+        self.history[key] = (msg, answer, images, (prompt, neg_prompt))
 
     @render.error
     async def render_error(self, ctx, error):
