@@ -1,0 +1,5 @@
+Pillow
+argunparse
+requests
+py-cord
+python-dotenv
