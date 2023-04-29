@@ -26,6 +26,7 @@ models_LUT = {
         "darksushi": ("more_models_anime_DarkSushiMix_darkSushiMixMix_brighterPruned", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "darksushi25d": ("more_models_anime_darksushi2.5d_darkSushi25D25D_v20", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "deliberate": ("more_models_allround_Deliberate_deliberate_v2", "vae-ft-mse-840000-ema-pruned.safetensors"),
+        "ghostmix": ("more_models_anime_cetus_ghostmix_ghostmix_v11", "kl-f8-anime2.ckpt"),
         "hassanblend": ("more_models_allround_HassanBlend 1.5.1.2_hassanblend1512And_hassanblend1512", "vae-ft-mse-840000-ema-pruned.safetensors"),
         "hassanblendfantasy": ("more_models_allround_HassanBlend-Fantasy_HB-Fantasy1.5", "vae-ft-mse-840000-ema-pruned.safetensors"),
 #        "illuminati": ("more_models_allround_Illuminati Diffusion v1.1_illuminatiDiffusionV1_v11", "Automatic"),
