@@ -57,6 +57,7 @@ models_LUT = {
         "anyh": ("more_models_anime_AnyHentai_anyhentai_20", "Counterfeit-V2.5.vae.pt"),
 }
 
+default_sampler = None
 sampler_LUT = None
 
 dimensions_LUT = {
@@ -179,7 +180,7 @@ pics_args_parse.add_argument("--nsfw", help="Allow nsfw content", default=False,
 pics_args_parse.add_argument("-n", help="Number of pictures", default=1, type=int)
 pics_args_parse.add_argument("--cfgs", help="Classifier Free Guidance Scale - how strongly the image should conform to prompt - lower values produce more creative results. Default is 7.", default=7, type=int)
 pics_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default=[], type=str, action='append')
-pics_args_parse.add_argument("-s", "--sampler", dest="sampler_name", help=f"Stable diffusion sampler. See !samplers for a list", default="dpmpp_sde_ka", type=str)
+pics_args_parse.add_argument("-s", "--sampler", dest="sampler_name", help=f"Stable diffusion sampler. See !samplers for a list", default=None, type=str)
 pics_args_parse.add_argument("-i", dest="sampler_steps", help="Number of sampler steps", default=None, type=int)
 pics_args_parse.add_argument("-l", "--layout", dest="layout", default="square", choices=["square", "lsquare", "portrait", "lportrait", "landscape", "llandscape"])
 pics_args_parse.add_argument("--clip_stop", dest="clip_stop", help="Sets where to stop the CLIP language model. Works kinda like this in layers person -> male, female -> man, boy, woman girl -> and so on", default=1, choices=range(1, 5), type=int)
@@ -349,8 +350,8 @@ class Pics(commands.Cog):
     async def samplers(self, ctx):
         member = ctx.author
 
-        ms = ', '.join(sampler_LUT.keys())
-        msg = f"Available samplers: {ms}"
+        samplers = ', '.join(sampler_LUT.keys())
+        msg = "Available samplers: {}\nDefault is: {}".format(samplers, default_sampler)
         await ctx.send(msg)
 
     @commands.command(usage=pics_args_parse.format_help())
@@ -380,6 +381,9 @@ class Pics(commands.Cog):
         upscaler = args.upscaler
         sampler_steps = args.sampler_steps
         seed = args.seed
+
+        if sampler is None:
+            sampler = default_sampler
 
         if len(data_models) == 0:
             data_models = ["deliberate"]
@@ -479,5 +483,8 @@ def setup(bot):
 
     global sampler_LUT
     sampler_LUT = {e["name"]: (e["path"], e["iterations"]) for e in c["samplers"]}
+
+    global default_sampler
+    default_sampler = c["defaults"]["sampler"]
 
     bot.add_cog(Pics(bot))
