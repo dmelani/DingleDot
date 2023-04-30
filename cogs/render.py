@@ -1,5 +1,6 @@
 import discord
 import json
+import yaml
 from discord.ext import commands
 from discord import option
 from discord import Option
@@ -56,14 +57,7 @@ models_LUT = {
         "anyh": ("more_models_anime_AnyHentai_anyhentai_20", "Counterfeit-V2.5.vae.pt"),
 }
 
-sampler_LUT = {
-        "euler_a": ("Euler a", 20),
-        "ddim": ("DDIM", 50),
-        "dpmpp_sde_ka": ("DPM++ SDE Karras", 31),
-        "dpmpp_2m_ka": ("DPM++ 2M Karras", 31),
-        "dpmpp_2s_a_ka": ("DPM++ 2S a Karras", 31),
-        "heun": ("Heun", 50)
-        }
+sampler_LUT = None
 
 dimensions_LUT = {
         "square": (512, 512),
@@ -185,7 +179,7 @@ pics_args_parse.add_argument("--nsfw", help="Allow nsfw content", default=False,
 pics_args_parse.add_argument("-n", help="Number of pictures", default=1, type=int)
 pics_args_parse.add_argument("--cfgs", help="Classifier Free Guidance Scale - how strongly the image should conform to prompt - lower values produce more creative results. Default is 7.", default=7, type=int)
 pics_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default=[], type=str, action='append')
-pics_args_parse.add_argument("-s", "--sampler", dest="sampler_name", help=f"Stable diffusion sampler", choices=sampler_LUT.keys(), default="dpmpp_sde_ka", type=str)
+pics_args_parse.add_argument("-s", "--sampler", dest="sampler_name", help=f"Stable diffusion sampler. See !samplers for a list", default="dpmpp_sde_ka", type=str)
 pics_args_parse.add_argument("-i", dest="sampler_steps", help="Number of sampler steps", default=None, type=int)
 pics_args_parse.add_argument("-l", "--layout", dest="layout", default="square", choices=["square", "lsquare", "portrait", "lportrait", "landscape", "llandscape"])
 pics_args_parse.add_argument("--clip_stop", dest="clip_stop", help="Sets where to stop the CLIP language model. Works kinda like this in layers person -> male, female -> man, boy, woman girl -> and so on", default=1, choices=range(1, 5), type=int)
@@ -349,6 +343,15 @@ class Pics(commands.Cog):
         msg = f"Available models: {ms}"
         await ctx.send(msg)
 
+    @commands.command()
+    @commands.check(check_if_allowed_guilds)
+    @commands.check(check_if_allowed_channels)
+    async def samplers(self, ctx):
+        member = ctx.author
+
+        ms = ', '.join(sampler_LUT.keys())
+        msg = f"Available samplers: {ms}"
+        await ctx.send(msg)
 
     @commands.command(usage=pics_args_parse.format_help())
     @commands.check(check_if_allowed_guilds)
@@ -388,6 +391,10 @@ class Pics(commands.Cog):
             if dm not in models_LUT:
                 await ctx.send(f"Oi, {member}. No such model:", dm)
                 return
+
+        if sampler not in sampler_LUT:
+            await ctx.send(f"Oi, {member}. No such sampler:", dm)
+            return
 
         # This is probable a good idea
         neg_prompt = "(child), (kid), (toddler), " + neg_prompt
@@ -466,4 +473,11 @@ class Pics(commands.Cog):
 def setup(bot):
     global allowed_guilds
     allowed_guilds = [int(x) for x in bot.allowed_guilds]
+
+    with open("render.yaml") as f:
+        c = yaml.safe_load(f)
+
+    global sampler_LUT
+    sampler_LUT = {e["name"]: (e["path"], e["iterations"]) for e in c["samplers"]}
+
     bot.add_cog(Pics(bot))
