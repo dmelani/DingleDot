@@ -14,6 +14,8 @@ import argunparse
 
 import aiohttp
 
+api_server = None
+
 default_model = None
 models_LUT = None
 
@@ -226,7 +228,7 @@ class Pics(commands.Cog):
         img = images[pic_no]
         t = Interrogate(img, model)
         async with aiohttp.ClientSession() as session:
-            async with session.post('http://192.168.1.43:7860/sdapi/v1/interrogate', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
+            async with session.post(api_server + '/sdapi/v1/interrogate', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
                 r_data = await response.text()
 
         resp = parse_interrogate_response(r_data)
@@ -240,7 +242,7 @@ class Pics(commands.Cog):
         member = ctx.author
 
         async with aiohttp.ClientSession() as session:
-            async with session.get('http://192.168.1.43:7860/sd_api_lora/lora', headers={'Content-type': 'application/json'}) as response:
+            async with session.get(api_server + '/sd_api_lora/lora', headers={'Content-type': 'application/json'}) as response:
                 r_data = await response.text()
 
         loras = parse_lora_response(r_data)
@@ -436,7 +438,7 @@ class Pics(commands.Cog):
             model, vae = models_LUT[dm]
             t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs, sampler_name=sampler_name, steps=steps, upscaler=upscaler_name, seed=seed)
             async with aiohttp.ClientSession() as session:
-                async with session.post('http://192.168.1.43:7860/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
+                async with session.post(api_server + '/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
                     r_data = await response.text()
 
             resp = parse_txt2img_respones(r_data)
@@ -492,6 +494,9 @@ def setup(bot):
 
     with open("render.yaml") as f:
         c = yaml.safe_load(f)
+
+    global api_server
+    api_server = c["api_server"]
 
     global sampler_LUT
     sampler_LUT = {e["name"]: (e["path"], e["iterations"]) for e in c["samplers"]}

@@ -1,4 +1,6 @@
 # Sample configuration for the render cog
+api_server: "http://example.com:7860"
+
 defaults:
   sampler: "dpmpp_sde_ka"
   dimension: "square"
