@@ -247,6 +247,7 @@ class Pics(commands.Cog):
 
         path_filter = ["stuff"] # I want to exclude stuff that's not tested
         resp = [e.name for e in loras.loras if not any(substr in e.filename for substr in path_filter)]
+        resp.sort()
 
         await ctx.send(f"Oi, {member}. Available loras: {', '.join(resp)}")
 
