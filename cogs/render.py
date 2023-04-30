@@ -26,7 +26,15 @@ dimensions_LUT = None
 upscalers_LUT = None
 
 allowed_guilds = None
+allowed_guilds_restricted = None
 disallowed_channels = ["general", "allmänt"]
+
+def check_if_allowed_guilds_restricted(ctx):
+    # Direct messages do not have guild
+    if ctx.guild is None:
+        return False
+
+    return ctx.guild and ctx.guild.id in allowed_guilds_restricted
 
 def check_if_allowed_guilds(ctx):
     # Direct messages do not have guild
@@ -63,6 +71,19 @@ class NonExitingArgumentParser(ArgumentParser):
         args = {'prog': self.prog, 'message': message}
         raise ArgParseException('%(prog)s: error: %(message)s\n' % args)
 
+class LoraEntry:
+    def __init__(self, name, filename):
+        self.name = name
+        self.filename = filename
+
+class LoraResponse:
+    def __init__(self, data):
+        message = json.loads(data)
+        self.loras = [LoraEntry(e["name"], e["filename"]) for e in message]
+        
+def parse_lora_response(data):
+    return LoraResponse(data)
+    
 class Interrogate:
     def __init__(self, image, model):
         self.image = image
@@ -76,7 +97,7 @@ class InterrogateResponse:
         message = json.loads(data)
         self.message = message["caption"]
 
-def parse_interrogate_respones(data):
+def parse_interrogate_response(data):
     return InterrogateResponse(data)
 
 class Txt2Img:
@@ -208,9 +229,26 @@ class Pics(commands.Cog):
             async with session.post('http://192.168.1.43:7860/sdapi/v1/interrogate', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
                 r_data = await response.text()
 
-        resp = parse_interrogate_respones(r_data)
+        resp = parse_interrogate_response(r_data)
 
         await ctx.send(f"Oi, {member}. Explanation was: {resp.message}")
+
+    @commands.command()
+    @commands.check(check_if_allowed_guilds_restricted)
+    @commands.check(check_if_allowed_channels)
+    async def loras(self, ctx, *msg):
+        member = ctx.author
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get('http://192.168.1.43:7860/sd_api_lora/lora', headers={'Content-type': 'application/json'}) as response:
+                r_data = await response.text()
+
+        loras = parse_lora_response(r_data)
+
+        path_filter = ["stuff"] # I want to exclude stuff that's not tested
+        resp = [e.name for e in loras.loras if not any(substr in e.filename for substr in path_filter)]
+
+        await ctx.send(f"Oi, {member}. Available loras: {', '.join(resp)}")
 
     @commands.command(usage=again_args_parse.format_help())
     @commands.check(check_if_allowed_guilds)
@@ -448,6 +486,8 @@ class Pics(commands.Cog):
 def setup(bot):
     global allowed_guilds
     allowed_guilds = [int(x) for x in bot.allowed_guilds]
+    global allowed_guilds_restricted
+    allowed_guilds_restricted = [int(x) for x in bot.allowed_guilds_restricted]
 
     with open("render.yaml") as f:
         c = yaml.safe_load(f)

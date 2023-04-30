@@ -28,6 +28,7 @@ async def main():
 
     dd = DingleDot(intents=intents, command_prefix='!')
     dd.allowed_guilds = config["GUILDS"].split(",")
+    dd.allowed_guilds_restricted = config["GUILDS_RESTRICTED"].split(",")
     dd.add_command(commands.Command(dd.reload))
 
     for f in os.listdir("./cogs"):
