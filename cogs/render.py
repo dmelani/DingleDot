@@ -20,14 +20,8 @@ models_LUT = None
 default_sampler = None
 sampler_LUT = None
 
-dimensions_LUT = {
-        "square": (512, 512),
-        "lsquare": (768, 768),
-        "landscape": (768, 512),
-        "llandscape": (1024, 768),
-        "portrait": (512, 768),
-        "lportrait": (768, 1024)
-        }
+default_dimension = None
+dimensions_LUT = None
 
 upscalers_LUT = {
         "normal": "R-ESRGAN 4x+",
@@ -142,7 +136,7 @@ pics_args_parse.add_argument("--cfgs", help="Classifier Free Guidance Scale - ho
 pics_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default=[], type=str, action='append')
 pics_args_parse.add_argument("-s", "--sampler", dest="sampler_name", help=f"Stable diffusion sampler. See !samplers for a list", default=None, type=str)
 pics_args_parse.add_argument("-i", dest="sampler_steps", help="Number of sampler steps", default=None, type=int)
-pics_args_parse.add_argument("-l", "--layout", dest="layout", default="square", choices=["square", "lsquare", "portrait", "lportrait", "landscape", "llandscape"])
+pics_args_parse.add_argument("-l", "--layout", dest="layout", help="Image layout. See !layouts for a list",  default=None, type=str)
 pics_args_parse.add_argument("--clip_stop", dest="clip_stop", help="Sets where to stop the CLIP language model. Works kinda like this in layers person -> male, female -> man, boy, woman girl -> and so on", default=1, choices=range(1, 5), type=int)
 pics_args_parse.add_argument("prompt", type=str)
 pics_args_parse.add_argument("neg_prompt", metavar="negative prompt", type=str, nargs='?', default="(bad quality, worst quality:1.4)")
@@ -297,6 +291,16 @@ class Pics(commands.Cog):
     @commands.command()
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
+    async def layouts(self, ctx):
+        member = ctx.author
+
+        dimensions = ', '.join(dimensions_LUT.keys())
+        msg = "Available layouts: {}\nDefault is: {}".format(dimensions, default_dimension)
+        await ctx.send(msg)
+
+    @commands.command()
+    @commands.check(check_if_allowed_guilds)
+    @commands.check(check_if_allowed_channels)
     async def models(self, ctx):
         member = ctx.author
 
@@ -333,7 +337,6 @@ class Pics(commands.Cog):
         batch_size = args.n
         filter_nsfw = False if args.nsfw is True else True
         data_models = args.data_model
-        width, height = dimensions_LUT[args.layout]
         clip_stop = args.clip_stop
         restore_faces = args.restore_faces
         cfgs = args.cfgs
@@ -341,6 +344,11 @@ class Pics(commands.Cog):
         upscaler = args.upscaler
         sampler_steps = args.sampler_steps
         seed = args.seed
+        layout = args.layout
+
+        if layout is None:
+            layout = default_dimension
+        width, height = dimensions_LUT[layout]
 
         if sampler is None:
             sampler = default_sampler
@@ -452,5 +460,11 @@ def setup(bot):
 
     global default_model
     default_model = c["defaults"]["model"]
+
+    global dimensions_LUT
+    dimensions_LUT = {e["name"]: (e["width"], e["height"]) for e in c["dimensions"]}
+
+    global default_dimension
+    default_dimension = c["defaults"]["dimension"]
 
     bot.add_cog(Pics(bot))
