@@ -1,0 +1,75 @@
+# Sample configuration for the render cog
+defaults:
+  sampler: "dpmpp_sde_ka"
+  dimension: "square"
+  model: "deliberate"
+
+dimensions:
+  - name: "square"
+    width: 512
+    height: 512
+  - name: "lsquare"
+    width: 768
+    height: 768
+  - name: "landscape"
+    width: 768
+    height: 512
+  - name: "llandscape"
+    width: 1024
+    height: 768
+  - name: "portrait"
+    width: 512
+    height: 768
+  - name: "lportrait"
+    width: 768
+    height: 102
+
+samplers:
+  - name: "euler_a"
+    path: "Euler a"
+    iterations: 20
+  - name: "ddim"
+    path: "DDIM"
+    iterations: 50
+  - name: "dpmpp_sde_ka"
+    path: "DPM++ SDE Karras"
+    iterations: 31
+  - name: "dpmpp_2m_ka"
+    path: "DPM++ 2M Karras"
+    iterations: 31
+  - name: "dpmpp_2s_a_ka"
+    path: "DPM++ 2S a Karras"
+    iterations: 31
+  - name: "heun"
+    path: "Heun"
+    iterations: 50
+
+upscalers:
+  - name: "normal"
+    path: "R-ESRGAN 4x+"
+  - name: "anime" 
+    path: "R-ESRGAN 4x+ Anime6B"
+
+models:
+  - name: "anythingv5"
+    path: "more_models_anime_Anything V5_AnythingV3V5_v5PrtRE"
+    vae: "kl-f8-anime2.ckpt"
+  - name: "aurora"
+    path: "more_models_anime_Aurora_AuroraONE"
+    vae: "kl-f8-anime2.ckpt"
+  - name: "chilloutmix"
+    path: "more_models_allround_ChilloutMix_chilloutmix_NiPrunedFp32Fix"
+    vae: "vae-ft-mse-840000-ema-pruned.safetensors"
+  - name: "deliberate"
+    path: "more_models_allround_Deliberate_deliberate_v2"
+    vae: "vae-ft-mse-840000-ema-pruned.safetensors"
+  - name: "ghostmix"
+    path: "more_models_anime_cetus_ghostmix_ghostmix_v11"
+    vae: "kl-f8-anime2.ckpt"
+  - name: "illuminutty"
+    path: "more_models_allround_Illuminutty Diffusion_illuminuttyDiffusion_v111"
+    vae: "vae-ft-mse-840000-ema-pruned.safetensors"
+  - name: "lyriel"
+    path: "more_models_allround_Lyriel_lyriel_v15"
+    vae: "vae-ft-mse-840000-ema-pruned.safetensors"
+
