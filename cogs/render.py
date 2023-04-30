@@ -375,7 +375,6 @@ class Pics(commands.Cog):
 
         # This is probable a good idea
         neg_prompt = "(child), (kid), (toddler), " + neg_prompt
-#        print("DEBUG: final neg prompt", neg_prompt)
 
         sampler_name = None
         steps = None
@@ -402,7 +401,6 @@ class Pics(commands.Cog):
                     r_data = await response.text()
 
             resp = parse_txt2img_respones(r_data)
-            #print("DEBUG:", resp.info)#, resp.parameters)
             info = json.loads(resp.info)
 
             try:
