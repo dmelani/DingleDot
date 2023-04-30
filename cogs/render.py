@@ -14,48 +14,8 @@ import argunparse
 
 import aiohttp
 
-models_LUT = {
-        "anythingv5": ("more_models_anime_Anything V5_AnythingV3V5_v5PrtRE", "kl-f8-anime2.ckpt"),
-        "aom3a1b": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3A1B_orangemixs", "orangemix.vae.pt"),
-        "aom3a1": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3A1_orangemixs", "orangemix.vae.pt"),
-        "aom3a2": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3A2_orangemixs", "orangemix.vae.pt"),
-        "aom3a3": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3A3_orangemixs", "orangemix.vae.pt"),
-        "aom3": ("more_models_anime_OrangeMixs_Models_AbyssOrangeMix3_AOM3_orangemixs", "orangemix.vae.pt"),
-        "aurora": ("more_models_anime_Aurora_AuroraONE", "kl-f8-anime2.ckpt"),
-        "chilloutmix": ("more_models_allround_ChilloutMix_chilloutmix_NiPrunedFp32Fix", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "counterfeit": ("more_models_anime_Counterfeit-V2.5_Counterfeit-V2.5", "Counterfeit-V2.5.vae.pt"),
-        "darksushi": ("more_models_anime_DarkSushiMix_darkSushiMixMix_brighterPruned", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "darksushi25d": ("more_models_anime_darksushi2.5d_darkSushi25D25D_v20", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "deliberate": ("more_models_allround_Deliberate_deliberate_v2", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "ghostmix": ("more_models_anime_cetus_ghostmix_ghostmix_v11", "kl-f8-anime2.ckpt"),
-        "hassanblend": ("more_models_allround_HassanBlend 1.5.1.2_hassanblend1512And_hassanblend1512", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "hassanblendfantasy": ("more_models_allround_HassanBlend-Fantasy_HB-Fantasy1.5", "vae-ft-mse-840000-ema-pruned.safetensors"),
-#        "illuminati": ("more_models_allround_Illuminati Diffusion v1.1_illuminatiDiffusionV1_v11", "Automatic"),
-        "illuminati": ("more_models_allround_Illuminati Diffusion v1.1_illuminatiDiffusionV1_v11", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "illuminutty": ("more_models_allround_Illuminutty Diffusion_illuminuttyDiffusion_v111", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "kenshi": ("more_models_anime_Kenshi_kenshi_01", "kl-f8-anime2.ckpt"),
-        "lyriel": ("more_models_allround_Lyriel_lyriel_v15", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "ned": ("more_models_anime_NeverEnding Dream (NED)_neverendingDreamNED_bakedVae", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "pw": ("more_models_nsfw_Perfect World_perfectWorld_v2Baked", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "realism": ("more_models_allround_Realism Engine_realismEngine_v10", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "rev_animated": ("more_models_allround_ReV Animated_revAnimated_v122", "kl-f8-anime2.ckpt"),
-        "rev": ("more_models_allround_Realistic Vision_realisticVisionV20_v20", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "rpg": ("more_models_allround_RPG_rpg_V4", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "simplybeautiful": ("more_models_anime_SimplyBeautiful_simplyBeautiful_v10", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "test5": ("more_models_nsfw_Uber_Realistic_Porn_Merge_(URPM)_uberRealisticPornMerge_urpmv13", "vae-ft-mse-840000-ema-pruned.safetensor"),
-        "test10": ("more_models_test10", "kl-f8-anime2.ckpt"),
-        "test11": ("more_models_test11", "kl-f8-anime2.ckpt"),
-        "test12": ("more_models_test12", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "test_aom3a2_aurora_6040": ("test_aom3a2_aurora_6040", "kl-f8-anime2.ckpt"),
-        "test_aom3a2_aurora_8020": ("test_aom3a2_aurora_8020", "orangemix.vae.pt"),
-        "test_aom3a2_aurora_9010": ("test_aom3a2_aurora_9010", "orangemix.vae.pt"),
-        "mixpro": ("more_models_anime_Mix-Pro_mixProV4_v4", "kl-f8-anime2.ckpt"),
-        "citrine": ("more_models_anime_CitrineDreamMix_citrinedreammix_v11BakedVAE", "kl-f8-anime2.ckpt"),
-        "v08": ("more_models_testing_allround_V08_V08_V08", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "v08a": ("more_models_testing_allround_V08_V08_V08a", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "v08c": ("more_models_testing_allround_V08_V08_V08c", "vae-ft-mse-840000-ema-pruned.safetensors"),
-        "anyh": ("more_models_anime_AnyHentai_anyhentai_20", "Counterfeit-V2.5.vae.pt"),
-}
+default_model = None
+models_LUT = None
 
 default_sampler = None
 sampler_LUT = None
@@ -340,8 +300,8 @@ class Pics(commands.Cog):
     async def models(self, ctx):
         member = ctx.author
 
-        ms = ', '.join(models_LUT.keys())
-        msg = f"Available models: {ms}"
+        models = ', '.join(models_LUT.keys())
+        msg = "Available models: {}\nDefault is: {}".format(models, default_model)
         await ctx.send(msg)
 
     @commands.command()
@@ -386,18 +346,18 @@ class Pics(commands.Cog):
             sampler = default_sampler
 
         if len(data_models) == 0:
-            data_models = ["deliberate"]
+            data_models = [default_model]
 
         if filter_nsfw and "nsfw" not in neg_prompt:
             neg_prompt = "(nsfw:1.1), " + neg_prompt
 
         for dm in data_models:
             if dm not in models_LUT:
-                await ctx.send(f"Oi, {member}. No such model:", dm)
+                await ctx.send(f"Oi, {member}. No such model: {dm}")
                 return
 
         if sampler not in sampler_LUT:
-            await ctx.send(f"Oi, {member}. No such sampler:", dm)
+            await ctx.send(f"Oi, {member}. No such sampler: {sampler}")
             return
 
         # This is probable a good idea
@@ -486,5 +446,11 @@ def setup(bot):
 
     global default_sampler
     default_sampler = c["defaults"]["sampler"]
+
+    global models_LUT
+    models_LUT = {e["name"]: (e["path"], e["vae"]) for e in c["models"]}
+
+    global default_model
+    default_model = c["defaults"]["model"]
 
     bot.add_cog(Pics(bot))
