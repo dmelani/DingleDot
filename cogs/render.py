@@ -23,12 +23,7 @@ sampler_LUT = None
 default_dimension = None
 dimensions_LUT = None
 
-upscalers_LUT = {
-        "normal": "R-ESRGAN 4x+",
-        "anime" : "R-ESRGAN 4x+ Anime6B", 
-        "ultrasharp" : "4x-UltraSharp",
-        "ultramixbalanced" : "4x-UltraMix_Balanced"
-        }
+upscalers_LUT = None
 
 allowed_guilds = None
 disallowed_channels = ["general", "allmänt"]
@@ -141,7 +136,7 @@ pics_args_parse.add_argument("--clip_stop", dest="clip_stop", help="Sets where t
 pics_args_parse.add_argument("prompt", type=str)
 pics_args_parse.add_argument("neg_prompt", metavar="negative prompt", type=str, nargs='?', default="(bad quality, worst quality:1.4)")
 pics_args_parse.add_argument("--restore_faces", help="Attempts to restore faces", default=False, action='store_true')
-pics_args_parse.add_argument("-U", "--upscale", dest="upscaler", help=f"Upscale by 2x", default=None, choices=upscalers_LUT.keys())
+pics_args_parse.add_argument("-U", "--upscale", dest="upscaler", help=f"Upscale by 2x. See !upscalers for a list", default=None)
 pics_args_parse.add_argument("--seed", help="seed", default=None, type=int)
 
 again_args_parse = NonExitingArgumentParser(prog="!again", add_help=False, exit_on_error=False)
@@ -311,6 +306,16 @@ class Pics(commands.Cog):
     @commands.command()
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
+    async def upscalers(self, ctx):
+        member = ctx.author
+
+        upscalers = ', '.join(upscalers_LUT.keys())
+        msg = "Available upscalers: {}".format(upscalers)
+        await ctx.send(msg)
+
+    @commands.command()
+    @commands.check(check_if_allowed_guilds)
+    @commands.check(check_if_allowed_channels)
     async def samplers(self, ctx):
         member = ctx.author
 
@@ -466,5 +471,8 @@ def setup(bot):
 
     global default_dimension
     default_dimension = c["defaults"]["dimension"]
+
+    global upscalers_LUT
+    upscalers_LUT = {e["name"]: e["path"] for e in c["upscalers"]}
 
     bot.add_cog(Pics(bot))
