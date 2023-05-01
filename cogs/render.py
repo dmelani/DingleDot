@@ -103,7 +103,7 @@ def parse_interrogate_response(data):
     return InterrogateResponse(data)
 
 class Txt2Img:
-    def __init__(self, prompt = "Dingle dot the test bot", negative_prompt = "", sampler_name="DPM++ SDE Karras", steps=30, filter_nsfw = True, batch_size=1, model=None, vae=None, width=512, height=512, clip_stop=1, restore_faces=False, cfg_scale=7, upscaler=None, seed=None):
+    def __init__(self, prompt = "Dingle dot the test bot", negative_prompt = "", sampler_name="DPM++ SDE Karras", steps=30, filter_nsfw = True, batch_size=1, model=None, vae=None, width=512, height=512, clip_stop=1, restore_faces=False, cfg_scale=7, upscaler=None, seed=None, prompt_matrix=False):
         self.prompt = prompt
         self.negative_prompt = negative_prompt
         self.sampler_name = sampler_name
@@ -125,6 +125,10 @@ class Txt2Img:
 
         if seed:
             self.seed = seed
+
+        if prompt_matrix:
+            self.script_name = "prompt matrix"
+            self.script_args = [False, False, "positive", "comma", 0] 
 
         if upscaler:
             self.hr_upscaler = upscaler
@@ -161,6 +165,7 @@ pics_args_parse.add_argument("neg_prompt", metavar="negative prompt", type=str, 
 pics_args_parse.add_argument("--restore_faces", help="Attempts to restore faces", default=False, action='store_true')
 pics_args_parse.add_argument("-U", "--upscale", dest="upscaler", help=f"Upscale by 2x. See !upscalers for a list", default=None)
 pics_args_parse.add_argument("--seed", help="seed", default=None, type=int)
+pics_args_parse.add_argument("--prompt_matrix", help="Enable prompt matrix. Use | as a separator in the prompt.", default=False, action='store_true')
 
 again_args_parse = NonExitingArgumentParser(prog="!again", add_help=False, exit_on_error=False)
 again_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default=None, type=str)
@@ -391,6 +396,7 @@ class Pics(commands.Cog):
         sampler_steps = args.sampler_steps
         seed = args.seed
         layout = args.layout
+        prompt_matrix = args.prompt_matrix
 
         if layout is None:
             layout = default_dimension
@@ -436,7 +442,7 @@ class Pics(commands.Cog):
         images = []
         for dm in data_models:
             model, vae = models_LUT[dm]
-            t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs, sampler_name=sampler_name, steps=steps, upscaler=upscaler_name, seed=seed)
+            t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs, sampler_name=sampler_name, steps=steps, upscaler=upscaler_name, seed=seed, prompt_matrix=prompt_matrix)
             async with aiohttp.ClientSession() as session:
                 async with session.post(api_server + '/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
                     r_data = await response.text()
@@ -458,6 +464,10 @@ class Pics(commands.Cog):
                     files.append(f)
                     curr_seed = int(info['all_seeds'][i])
                     used_seeds.append(curr_seed)
+
+                    if prompt_matrix:
+                        #Only interested in first pic if using prompt matrix
+                        break
 
             except Exception as e:
                 await ctx.send(f"Failed to generate pic, {member}")
@@ -483,7 +493,6 @@ class Pics(commands.Cog):
         if type(error.original) is ArgParseException:
             await ctx.send(str(error.original))
         else:
-            print("DEBUG", error)
             await ctx.send(f"Well that didn't work... {type(error)}")
 
 def setup(bot):
