@@ -73,6 +73,19 @@ class NonExitingArgumentParser(ArgumentParser):
         args = {'prog': self.prog, 'message': message}
         raise ArgParseException('%(prog)s: error: %(message)s\n' % args)
 
+class VaeEntry:
+    def __init__(self, name, filename):
+        self.name = name
+        self.filename = filename
+
+class VaeResponse:
+    def __init__(self, data):
+        message = json.loads(data)
+        self.vaes = [VaeEntry(e["name"], e["filename"]) for e in message]
+        
+def parse_vae_response(data):
+    return VaeResponse(data)
+
 class LoraEntry:
     def __init__(self, name, filename):
         self.name = name
@@ -166,6 +179,7 @@ pics_args_parse.add_argument("--restore_faces", help="Attempts to restore faces"
 pics_args_parse.add_argument("-U", "--upscale", dest="upscaler", help=f"Upscale by 2x. See !upscalers for a list", default=None)
 pics_args_parse.add_argument("--seed", help="seed", default=None, type=int)
 pics_args_parse.add_argument("--prompt_matrix", help="Enable prompt matrix. Use | as a separator in the prompt.", default=False, action='store_true')
+pics_args_parse.add_argument("--vae", dest="vae", help=f"VAE to use with models. This overrides the model vae. See !vaes for a list", default=None, type=str)
 
 again_args_parse = NonExitingArgumentParser(prog="!again", add_help=False, exit_on_error=False)
 again_args_parse.add_argument("-m", "--model", dest="data_model", help="Stable diffusion model. See !models for a list", default=None, type=str)
@@ -179,6 +193,17 @@ class Pics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.history = {}
+
+    async def _get_vaes(self):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_server + '/sd_api_vae/vae', headers={'Content-type': 'application/json'}) as response:
+                r_data = await response.text()
+
+        vaes = parse_vae_response(r_data)
+
+        resp = [e.name for e in vaes.vaes] 
+        resp.sort()
+        return resp
 
     def _make_message_key(self, ctx):
         g = None
@@ -239,6 +264,16 @@ class Pics(commands.Cog):
         resp = parse_interrogate_response(r_data)
 
         await ctx.send(f"Oi, {member}. Explanation was: {resp.message}")
+
+    @commands.command()
+    @commands.check(check_if_allowed_guilds)
+    @commands.check(check_if_allowed_channels)
+    async def vaes(self, ctx, *msg):
+        member = ctx.author
+        
+        vaes = await self._get_vaes()
+
+        await ctx.send(f"Oi, {member}. Available VAEs: {', '.join(vaes)}")
 
     @commands.command()
     @commands.check(check_if_allowed_guilds_restricted)
@@ -397,6 +432,7 @@ class Pics(commands.Cog):
         seed = args.seed
         layout = args.layout
         prompt_matrix = args.prompt_matrix
+        vae_override = args.vae
 
         if layout is None:
             layout = default_dimension
@@ -420,7 +456,13 @@ class Pics(commands.Cog):
             await ctx.send(f"Oi, {member}. No such sampler: {sampler}")
             return
 
-        # This is probable a good idea
+        if vae_override:
+            vaes = await self._get_vaes()
+            if vae_override not in vaes:
+                await ctx.send(f"Oi, {member}. No such vae: {vae_override}")
+                return
+
+        # This is probably a good idea
         neg_prompt = "(child), (kid), (toddler), " + neg_prompt
 
         sampler_name = None
@@ -442,6 +484,9 @@ class Pics(commands.Cog):
         images = []
         for dm in data_models:
             model, vae = models_LUT[dm]
+            if vae_override:
+                vae = vae_override
+
             t = Txt2Img(prompt=prompt, negative_prompt=neg_prompt, filter_nsfw=filter_nsfw, batch_size=batch_size, model=model, vae=vae, width=width, height=height, clip_stop=clip_stop, restore_faces=restore_faces, cfg_scale=cfgs, sampler_name=sampler_name, steps=steps, upscaler=upscaler_name, seed=seed, prompt_matrix=prompt_matrix)
             async with aiohttp.ClientSession() as session:
                 async with session.post(api_server + '/sdapi/v1/txt2img', data=t.to_json(), headers={'Content-type': 'application/json'}) as response:
