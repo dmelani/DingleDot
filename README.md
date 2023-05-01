@@ -10,6 +10,7 @@ Epically crappy discord bot, but it works.
 - Support for multiple samplers.
 - Support for filtering NSFW images. This needs a [patched version](https://github.com/dmelani/stable-diffusion-webui-nsfw-censor) of the nsfw filter extension if you want to turn it off and on via the bot. I will remove this requirement if the patched version is merged upstream.
 - Support for listing loras. This needs the [sd-api-lora](https://github.com/dmelani/sd-api-lora) extension.
+- Support for prompt matrix.
 
 ## Prerequisites
 - [AUTOMATIC1111's stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) installed and started with api enabled. This does not have to be on the same computer as the bot.
