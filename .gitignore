@@ -1,4 +1,5 @@
 .env
+render.yaml
 venv/
 *.swp
 **/__pycache__
