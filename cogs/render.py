@@ -4,7 +4,7 @@ import yaml
 from discord.ext import commands
 from discord import option
 from discord import Option
-from discord.ext.commands.errors import CheckFailure
+from discord.ext.commands.errors import CheckFailure, ExpectedClosingQuoteError
 from PIL import Image
 import requests
 import base64
@@ -490,7 +490,9 @@ class Pics(commands.Cog):
         if type(error) is CheckFailure:
             return
 
-        if type(error.original) is ArgParseException:
+        if type(error) is ExpectedClosingQuoteError:
+            await ctx.send(str(error))
+        elif type(error.original) is ArgParseException:
             await ctx.send(str(error.original))
         else:
             await ctx.send(f"Well that didn't work... {type(error)}")
