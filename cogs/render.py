@@ -73,6 +73,24 @@ class NonExitingArgumentParser(ArgumentParser):
         args = {'prog': self.prog, 'message': message}
         raise ArgParseException('%(prog)s: error: %(message)s\n' % args)
 
+class EmbeddingEntry:
+    def __init__(self, name, step, sd_checkpoint, sd_checkpoint_name, shape, vectors):
+        self.name = name
+        self.step = step
+        self.sd_checkpoint = sd_checkpoint
+        self.sd_checkpoint_name = sd_checkpoint_name
+        self.shape = shape
+        self.vectors = vectors
+
+class EmbeddingResponse:
+    def __init__(self, data):
+        message = json.loads(data)
+        self.loaded = [EmbeddingEntry(k, e["step"], e["sd_checkpoint"], e["sd_checkpoint_name"], e["shape"], e["vectors"]) for k, e in message["loaded"].items()]
+        self.skipped = [EmbeddingEntry(k, e["step"], e["sd_checkpoint"], e["sd_checkpoint_name"], e["shape"], e["vectors"]) for k, e in message["skipped"].items()]
+
+def parse_embedding_response(data):
+    return EmbeddingResponse(data)
+
 class VaeEntry:
     def __init__(self, name, filename):
         self.name = name
@@ -289,6 +307,23 @@ class Pics(commands.Cog):
 
         path_filter = ["stuff"] # I want to exclude stuff that's not tested
         resp = [e.name for e in loras.loras if not any(substr in e.filename for substr in path_filter)]
+        resp.sort()
+
+        await ctx.send(f"Oi, {member}. Available loras: {', '.join(resp)}")
+
+    @commands.command()
+    @commands.check(check_if_allowed_guilds)
+    @commands.check(check_if_allowed_channels)
+    async def embeddings(self, ctx, *msg):
+        member = ctx.author
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_server + '/sdapi/v1/embeddings', headers={'Content-type': 'application/json'}) as response:
+                r_data = await response.text()
+
+        embeddings = parse_embedding_response(r_data)
+
+        resp = [e.name for e in embeddings.loaded] + [e.name for e in embeddings.skipped]
         resp.sort()
 
         await ctx.send(f"Oi, {member}. Available loras: {', '.join(resp)}")
