@@ -15,6 +15,7 @@ import argunparse
 import aiohttp
 
 api_server = None
+bandolier_server = None
 
 default_model = None
 models_LUT = None
@@ -103,6 +104,19 @@ class VaeResponse:
         
 def parse_vae_response(data):
     return VaeResponse(data)
+
+class BandolierListEntry:
+    def __init__(self, alias, path):
+        self.alias = alias
+        self.path = path
+
+class BandolierListResponse:
+    def __init__(self, data):
+        message = json.loads(data)
+        self.models = [BandolierListEntry(e[0], e[1]) for e in message]
+    
+def parse_bandolier_list_response(data):
+    return BandolierListResponse(data)
 
 class LoraEntry:
     def __init__(self, name, filename):
@@ -206,11 +220,37 @@ explain_args_parse = NonExitingArgumentParser(prog="!explain", add_help=False, e
 explain_args_parse.add_argument("last_pic", type=int, default=0)
 explain_args_parse.add_argument("-m", dest="model", default="clip", choices=["clip", "deepdanbooru"])
 
+dynmodel_download_args_parse = NonExitingArgumentParser(prog="!dynmodel_download", add_help=False, exit_on_error=False)
+dynmodel_download_args_parse.add_argument("alias", help="Name to give downloaded model", type=str)
+dynmodel_download_args_parse.add_argument("hash", help="Civitai model hash", type=str)
+
 class Pics(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
         self.history = {}
+
+    async def _get_bandolier_models(self):
+        if bandolier_server == None:
+            return None 
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(bandolier_server + '/list', headers={'Content-type': 'application/json'}) as response:
+                r_data = await response.text()
+
+        return parse_bandolier_list_response(r_data)
+
+    async def _download_bandolier_model(self, alias, civitai_hash):
+        if bandolier_server == None:
+            return None 
+    
+        data = {"hash": civitai_hash, "alias": alias}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(bandolier_server + '/download/civitai', data=json.dumps(data), headers={'Content-type': 'application/json'}) as response:
+                r_data = await response.text()
+
+        return r_data
 
     async def _get_vaes(self):
         async with aiohttp.ClientSession() as session:
@@ -409,13 +449,60 @@ class Pics(commands.Cog):
         msg = "Available layouts: {}\nDefault is: {}".format(dimensions, default_dimension)
         await ctx.send(msg)
 
+
+    @commands.command()
+    @commands.check(check_if_allowed_guilds_restricted)
+    @commands.check(check_if_allowed_channels)
+    async def dynmodels(self, ctx):
+        member = ctx.author
+        bdmodels = await self._get_bandolier_models()
+
+        bandolier_models = {}
+        if bdmodels != None:
+            bandolier_models = {e.alias for e in bdmodels.models}
+
+        models = ', '.join(sorted(bandolier_models))
+        msg = "Available dynamic models: {}".format(models)
+        await ctx.send(msg)
+
+    @commands.command(usage=dynmodel_download_args_parse.format_help())
+    @commands.check(check_if_allowed_guilds_restricted)
+    @commands.check(check_if_allowed_channels)
+    async def dynmodel_download(self, ctx, *msg):
+        member = ctx.author
+        try:
+            args = dynmodel_download_args_parse.parse_args(msg)
+        except ArgumentError as e:
+            await ctx.send(f"oi, {member}. bad command: {e}")
+            return
+
+        alias = args.alias
+        model_hash = args.hash
+
+        bdmodels = await self._get_bandolier_models()
+
+        bandolier_models = {}
+        if bdmodels != None:
+            bandolier_models = {e.alias for e in bdmodels.models}
+
+        if alias in models_LUT or alias in bandolier_models:
+            await ctx.send(f"Oi, {member}. {alias} already exists")
+            return
+
+        await ctx.send(f"Oi, {member}. Downloading {alias}.")
+        await self._download_bandolier_model(alias, model_hash)
+
+        await ctx.send(f"Oi, {member}. Dynamic model {alias} downloaded.")
+
     @commands.command()
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def models(self, ctx):
         member = ctx.author
+        
+        configures_models = {models_LUT.keys()}
 
-        models = ', '.join(models_LUT.keys())
+        models = ', '.join(sorted(configures_models))
         msg = "Available models: {}\nDefault is: {}".format(models, default_model)
         await ctx.send(msg)
 
@@ -469,6 +556,11 @@ class Pics(commands.Cog):
         prompt_matrix = args.prompt_matrix
         vae_override = args.vae
 
+        bdmodels = await self._get_bandolier_models()
+        bandolier_models = {}
+        if bdmodels != None:
+            bandolier_models = {e.alias: (e.path, "Automatic") for e in bdmodels.models}
+
         if layout is None:
             layout = default_dimension
         width, height = dimensions_LUT[layout]
@@ -483,7 +575,7 @@ class Pics(commands.Cog):
             neg_prompt = "(nsfw:1.1), " + neg_prompt
 
         for dm in data_models:
-            if dm not in models_LUT:
+            if dm not in models_LUT and dm not in bandolier_models:
                 await ctx.send(f"Oi, {member}. No such model: {dm}")
                 return
 
@@ -518,7 +610,15 @@ class Pics(commands.Cog):
         used_seeds = []
         images = []
         for dm in data_models:
-            model, vae = models_LUT[dm]
+            if dm in bandolier_models:
+                model, vae = bandolier_models[dm]
+
+            # Hardcoded configs will override dynamic models
+            if dm in models_LUT:
+                model, vae = models_LUT[dm]
+            
+            print("DEBUG", f"rendering {dm} {model} {vae}")
+
             if vae_override:
                 vae = vae_override
 
@@ -588,6 +688,10 @@ def setup(bot):
 
     global api_server
     api_server = c["api_server"]
+
+    global bandolier_server
+    if "bandolier_server" in c:
+        bandolier_server = c["bandolier_server"]
 
     global sampler_LUT
     sampler_LUT = {e["name"]: (e["path"], e["iterations"]) for e in c["samplers"]}

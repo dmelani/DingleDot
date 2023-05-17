@@ -1,5 +1,6 @@
 # Sample configuration for the render cog
 api_server: "http://example.com:7860"
+#bandolier_server: "http://example.com:5000"
 
 defaults:
   sampler: "dpmpp_sde_ka"
@@ -24,7 +25,7 @@ dimensions:
     height: 768
   - name: "lportrait"
     width: 768
-    height: 102
+    height: 1024
 
 samplers:
   - name: "euler_a"
