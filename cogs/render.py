@@ -112,11 +112,16 @@ class BandolierListEntry:
 
 class BandolierListResponse:
     def __init__(self, data):
-        message = json.loads(data)
-        self.models = [BandolierListEntry(e[0], e[1]) for e in message]
+            message = json.loads(data)
+            self.models = [BandolierListEntry(e[0], e[1]) for e in message]
     
 def parse_bandolier_list_response(data):
-    return BandolierListResponse(data)
+    try:
+        res = BandolierListResponse(data)
+    except:
+        res = None
+
+    return res
 
 class LoraEntry:
     def __init__(self, name, filename):
@@ -206,7 +211,7 @@ pics_args_parse.add_argument("-i", dest="sampler_steps", help="Number of sampler
 pics_args_parse.add_argument("-l", "--layout", dest="layout", help="Image layout. See !layouts for a list",  default=None, type=str)
 pics_args_parse.add_argument("--clip_stop", dest="clip_stop", help="Sets where to stop the CLIP language model. Works kinda like this in layers person -> male, female -> man, boy, woman girl -> and so on", default=1, choices=range(1, 5), type=int)
 pics_args_parse.add_argument("prompt", type=str)
-pics_args_parse.add_argument("neg_prompt", metavar="negative prompt", type=str, nargs='?', default="(bad quality, worst quality:1.4)")
+pics_args_parse.add_argument("neg_prompt", metavar="negative prompt", type=str, nargs='?', default="(bad quality, low quality, worst quality:1.4)")
 pics_args_parse.add_argument("--restore_faces", help="Attempts to restore faces", default=False, action='store_true')
 pics_args_parse.add_argument("-U", "--upscale", dest="upscaler", help=f"Upscale by 2x. See !upscalers for a list", default=None)
 pics_args_parse.add_argument("--seed", help="seed", default=None, type=int)
@@ -234,9 +239,12 @@ class Pics(commands.Cog):
         if bandolier_server == None:
             return None 
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(bandolier_server + '/list', headers={'Content-type': 'application/json'}) as response:
-                r_data = await response.text()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(bandolier_server + '/list', headers={'Content-type': 'application/json'}) as response:
+                        r_data = await response.text()
+        except:
+            return None
 
         return parse_bandolier_list_response(r_data)
 
@@ -499,10 +507,12 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_channels)
     async def models(self, ctx):
         member = ctx.author
-        
-        configures_models = {models_LUT.keys()}
 
-        models = ', '.join(sorted(configures_models))
+        print("ASDF", models_LUT.keys())
+        
+        configured_models = models_LUT.keys()
+
+        models = ', '.join(sorted(configured_models))
         msg = "Available models: {}\nDefault is: {}".format(models, default_model)
         await ctx.send(msg)
 
@@ -557,6 +567,7 @@ class Pics(commands.Cog):
         vae_override = args.vae
 
         bdmodels = await self._get_bandolier_models()
+        print("DEBUG", bdmodels)
         bandolier_models = {}
         if bdmodels != None:
             bandolier_models = {e.alias: (e.path, "Automatic") for e in bdmodels.models}
