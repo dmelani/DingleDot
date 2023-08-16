@@ -288,7 +288,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def ohshit(self, ctx):
-        member = ctx.author
+        member = ctx.author.mention
 
         key = self._make_message_key(ctx)
 
@@ -307,7 +307,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def explain(self, ctx, *msg):
-        member = ctx.author
+        member = ctx.author.mention
         args = explain_args_parse.parse_args(msg)
         pic_no = args.last_pic
         model = args.model
@@ -336,7 +336,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def vaes(self, ctx, *msg):
-        member = ctx.author
+        member = ctx.author.mention
         
         vaes = await self._get_vaes()
 
@@ -346,7 +346,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds_restricted)
     @commands.check(check_if_allowed_channels)
     async def loras(self, ctx, *msg):
-        member = ctx.author
+        member = ctx.author.mention
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_server + '/sd_api_lora/lora', headers={'Content-type': 'application/json'}) as response:
@@ -364,7 +364,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def embeddings(self, ctx, *msg):
-        member = ctx.author
+        member = ctx.author.mention
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_server + '/sdapi/v1/embeddings', headers={'Content-type': 'application/json'}) as response:
@@ -381,7 +381,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def again(self, ctx, *msg):
-        member = ctx.author
+        member = ctx.author.mention
 
         key = self._make_message_key(ctx)
 
@@ -436,7 +436,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def lastprompt(self, ctx):
-        member = ctx.author
+        member = ctx.author.mention
 
         key = self._make_message_key(ctx)
 
@@ -452,7 +452,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def layouts(self, ctx):
-        member = ctx.author
+        member = ctx.author.mention
 
         dimensions = ', '.join(dimensions_LUT.keys())
         msg = "Available layouts: {}\nDefault is: {}".format(dimensions, default_dimension)
@@ -463,7 +463,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds_restricted)
     @commands.check(check_if_allowed_channels)
     async def dynmodels(self, ctx):
-        member = ctx.author
+        member = ctx.author.mention
         bdmodels = await self._get_bandolier_models()
 
         bandolier_models = {}
@@ -478,7 +478,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds_restricted)
     @commands.check(check_if_allowed_channels)
     async def civitai_download(self, ctx, *msg):
-        member = ctx.author
+        member = ctx.author.mention
         try:
             args = civitai_download_args_parse.parse_args(msg)
         except ArgumentError as e:
@@ -507,7 +507,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def models(self, ctx):
-        member = ctx.author
+        member = ctx.author.mention
 
         print("ASDF", models_LUT.keys())
         
@@ -521,7 +521,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def upscalers(self, ctx):
-        member = ctx.author
+        member = ctx.author.mention
 
         upscalers = ', '.join(upscalers_LUT.keys())
         msg = "Available upscalers: {}".format(upscalers)
@@ -531,7 +531,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def samplers(self, ctx):
-        member = ctx.author
+        member = ctx.author.mention
 
         samplers = ', '.join(sampler_LUT.keys())
         msg = "Available samplers: {}\nDefault is: {}".format(samplers, default_sampler)
@@ -541,7 +541,7 @@ class Pics(commands.Cog):
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
     async def render(self, ctx, *msg):
-        member = ctx.author
+        member = ctx.author.mention
 
         try:
             args = pics_args_parse.parse_args(msg)
