@@ -225,9 +225,9 @@ explain_args_parse = NonExitingArgumentParser(prog="!explain", add_help=False, e
 explain_args_parse.add_argument("last_pic", type=int, default=0)
 explain_args_parse.add_argument("-m", dest="model", default="clip", choices=["clip", "deepdanbooru"])
 
-dynmodel_download_args_parse = NonExitingArgumentParser(prog="!dynmodel_download", add_help=False, exit_on_error=False)
-dynmodel_download_args_parse.add_argument("alias", help="Name to give downloaded model", type=str)
-dynmodel_download_args_parse.add_argument("hash", help="Civitai model hash", type=str)
+civitai_download_args_parse = NonExitingArgumentParser(prog="!civitai_download", add_help=False, exit_on_error=False)
+civitai_download_args_parse.add_argument("alias", help="Name to give downloaded model", type=str)
+civitai_download_args_parse.add_argument("hash", help="Civitai model hash", type=str)
 
 class Pics(commands.Cog):
     
@@ -283,6 +283,7 @@ class Pics(commands.Cog):
         u = ctx.message.author
 
         return (g, c, u)
+
     @commands.command()
     @commands.check(check_if_allowed_guilds)
     @commands.check(check_if_allowed_channels)
@@ -473,13 +474,13 @@ class Pics(commands.Cog):
         msg = "Available dynamic models: {}".format(models)
         await ctx.send(msg)
 
-    @commands.command(usage=dynmodel_download_args_parse.format_help())
+    @commands.command(usage=civitai_download_args_parse.format_help())
     @commands.check(check_if_allowed_guilds_restricted)
     @commands.check(check_if_allowed_channels)
-    async def dynmodel_download(self, ctx, *msg):
+    async def civitai_download(self, ctx, *msg):
         member = ctx.author
         try:
-            args = dynmodel_download_args_parse.parse_args(msg)
+            args = civitai_download_args_parse.parse_args(msg)
         except ArgumentError as e:
             await ctx.send(f"oi, {member}. bad command: {e}")
             return
